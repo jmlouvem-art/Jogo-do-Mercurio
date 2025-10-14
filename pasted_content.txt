@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O Ciclo do Mercúrio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            touch-action: none; /* Desabilita zoom com dois toques no celular */
+        }
+        canvas {
+            /* Fundo com gradiente para garantir que sempre funcione */
+            background: linear-gradient(to bottom, #1e3a8a, #3b82f6);
+            background-size: cover;
+            background-position: center;
+        }
+        .modal {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-blue-900 flex flex-col items-center justify-center h-screen overflow-hidden">
+
+    <div id="game-container" class="w-full max-w-md h-full bg-blue-800 shadow-2xl flex flex-col relative hidden">
+        <!-- Cabeçalho com informações -->
+        <div class="p-3 bg-blue-200 bg-opacity-80 text-gray-800 flex justify-between items-center z-10">
+            <h1 class="text-xl font-bold text-center">O Ciclo do Mercúrio</h1>
+            <div class="font-bold">Pontos: <span id="score">0</span></div>
+        </div>
+
+        <!-- Canvas do Jogo -->
+        <canvas id="gameCanvas" class="flex-grow w-full absolute top-0 left-0"></canvas>
+        
+        <!-- Barra de Contaminação Vertical -->
+        <div class="absolute top-24 right-3 w-12 text-center z-10">
+            <div class="text-white text-sm font-bold mb-1" title="Mercúrio">Hg</div>
+            <div class="relative h-64 w-6 bg-white bg-opacity-30 rounded-full overflow-hidden mx-auto border-2 border-white/50">
+                <div id="mercury-bar" class="absolute bottom-0 w-full bg-red-600 transition-all duration-300" style="height: 0%;"></div>
+            </div>
+        </div>
+
+        <!-- Mensagem de Aceleração -->
+        <div id="speed-up-message" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-3xl font-bold z-20 transition-opacity duration-1000 opacity-0 pointer-events-none">
+            MAIS RÁPIDO!
+        </div>
+    </div>
+
+    <!-- Modal de Início -->
+    <div id="start-modal" class="modal absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-20">
+        <div class="bg-white rounded-lg p-6 text-center shadow-xl max-w-sm">
+            <h2 class="text-2xl font-bold mb-2">A Contaminação na Amazônia</h2>
+            <p class="mb-4">O garimpo ilegal lança mercúrio nos rios. No jogo, você é um Pirarucu faminto. Colete os peixes que caem para pontuar!</p>
+            <p class="mb-4 font-bold text-yellow-600">O Tucunaré está contaminado com mercúrio (Hg). Evite-o para não se contaminar.</p>
+            <p class="mb-6 text-sm">Arraste o dedo na tela para mover o tucunaré para a esquerda e direita.</p>
+            <button id="start-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg w-full">Começar a Jogar</button>
+        </div>
+    </div>
+
+    <!-- Modal de Game Over -->
+    <div id="game-over-modal" class="modal absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-20 hidden opacity-0">
+        <div class="bg-white rounded-lg p-6 text-center shadow-xl max-w-sm">
+            <h2 class="text-2xl font-bold mb-2 text-red-600">Fim de Jogo</h2>
+            <p id="game-over-reason" class="mb-4">A contaminação por mercúrio atingiu um nível fatal. Isso é o que acontece com a vida selvagem na Amazônia.</p>
+            <p class="mb-4">O mercúrio se acumula na cadeia alimentar, chegando até os seres humanos e causando graves problemas de saúde.</p>
+            <p class="font-bold mb-4">Sua pontuação final: <span id="final-score">0</span></p>
+            <button id="restart-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg w-full">Jogar Novamente</button>
+        </div>
+    </div>
+    
+    <!-- Modal Didático -->
+    <div id="info-modal" class="modal absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-20 hidden opacity-0">
+        <div class="bg-white rounded-lg p-6 text-center shadow-xl max-w-sm">
+            <h2 class="text-2xl font-bold mb-2 text-blue-600">Bioacumulação</h2>
+            <p class="mb-4">Ao comer peixes menores, você acumula o mercúrio que estava neles. Seus pontos mostram o quanto você comeu.</p>
+            <p class="mb-6 font-bold">Isso é chamado de bioacumulação. Quanto maior o peixe na cadeia alimentar, maior a concentração de mercúrio em seu corpo.</p>
+            <button id="continue-button" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg w-full">Entendi, continuar!</button>
+        </div>
+    </div>
+
+    <!-- Imagens do jogo (escondidas) -->
+    <div style="display: none;">
+        <!-- Pirarucu (Jogador) -->
+        <img id="player-img" src="https://i.ibb.co/3zd2yqk/Pirarucu.png">
+        <!-- Lambari (Peixe bom) -->
+        <img id="good-fish-img" src="https://i.ibb.co/2WPTcBC/Lambari.png">
+        <!-- Tamaqui (Peixe ruim/contaminado) -->
+        <img id="bad-fish-img" src="https://i.ibb.co/L5r3zVz/Tambaqui.png">
+    </div>
+
+    <script>
+        // Elementos do DOM
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const mercuryBarEl = document.getElementById('mercury-bar');
+        const gameContainer = document.getElementById('game-container');
+        
+        const startModal = document.getElementById('start-modal');
+        const gameOverModal = document.getElementById('game-over-modal');
+        const infoModal = document.getElementById('info-modal');
+        
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+        const continueButton = document.getElementById('continue-button');
+        const finalScoreEl = document.getElementById('final-score');
+        const gameOverReasonEl = document.getElementById('game-over-reason');
+        const speedUpMessageEl = document.getElementById('speed-up-message');
+
+        // Referências para as imagens
+        const playerImg = document.getElementById('player-img');
+        const goodFishImg = document.getElementById('good-fish-img');
+        const badFishImg = document.getElementById('bad-fish-img');
+
+        // Configurações do jogo
+        let score = 0;
+        let mercuryLevel = 0;
+        let gameRunning = false;
+        let infoPopupShown = false;
+        let speedMultiplier = 1.0;
+        let speedUpShown = false;
+        
+        let player, goodFish, badFish, bubbles;
+
+        // Função para dimensionar o canvas
+        function resizeCanvas() {
+            canvas.width = gameContainer.clientWidth;
+            canvas.height = gameContainer.clientHeight;
+        }
+
+        // Desenhar bolhas de fundo
+        function drawBubble(b) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        // Desenhar jogador (Pirarcu) - COM IMAGEM
+        function drawPlayer(p) {
+            ctx.drawImage(playerImg, p.x - p.width / 5, p.y - p.height / 5, p.width, p.height);
+        }
+
+        // Desenhar peixes bons (comida) - COM IMAGEM
+        function drawGoodFish(f) {
+            ctx.drawImage(goodFishImg, f.x - f.width / 4, f.y - f.height / 4, f.width, f.height);
+        }
+
+        // Desenhar peixes contaminados - COM IMAGEM
+        function drawBadFish(f) {
+            ctx.drawImage(badFishImg, f.x - f.width / 4, f.y - f.height / 4, f.width, f.height);
+        }
+
+        // Resetar e iniciar o jogo
+        function init() {
+            resizeCanvas();
+            score = 0;
+            mercuryLevel = 0;
+            infoPopupShown = false;
+            speedMultiplier = 1.0;
+            speedUpShown = false;
+            updateHUD();
+
+            player = { x: canvas.width / 2, y: canvas.height - 50, width: 80, height: 40, targetX: canvas.width / 2 };
+            goodFish = [];
+            badFish = [];
+            bubbles = [];
+
+            // Gerar peixes iniciais
+            for (let i = 0; i < 4; i++) {
+                spawnGoodFish();
+            }
+            for (let i = 0; i < 2; i++) {
+                spawnBadFish();
+            }
+            // Gerar bolhas iniciais
+            for (let i = 0; i < 20; i++) {
+                spawnBubble(true);
+            }
+        }
+        
+        function startGame() {
+            // CORREÇÃO: Torna o container visível ANTES de iniciar e dimensionar o canvas
+            gameContainer.classList.remove('hidden');
+            init();
+            gameRunning = true;
+            startModal.style.opacity = '0';
+            setTimeout(() => startModal.classList.add('hidden'), 300);
+            
+            if (!animationFrameId) {
+                gameLoop();
+            }
+        }
+        
+        // Função para criar bolhas
+        function spawnBubble(isInitial) {
+            bubbles.push({
+                x: Math.random() * canvas.width,
+                y: isInitial ? Math.random() * canvas.height : canvas.height + Math.random() * 50,
+                radius: Math.random() * 5 + 2,
+                speed: Math.random() * 1.5 + 0.5
+            });
+        }
+        
+        function spawnFish(type) {
+            const isGood = type === 'good';
+            const fish = {
+                x: Math.random() * (canvas.width - 40) + 20,
+                y: -50,
+                width: isGood ? 40 : 60, // Ajuste de tamanho para as imagens
+                height: isGood ? 20 : 30, // Ajuste de tamanho para as imagens
+                speed: (Math.random() * 2 + 2) * speedMultiplier
+            };
+            if (isGood) {
+                goodFish.push(fish);
+            } else {
+                badFish.push(fish);
+            }
+        }
+        
+        function spawnGoodFish() { spawnFish('good'); }
+        function spawnBadFish() { spawnFish('bad'); }
+        
+        function updateHUD() {
+            scoreEl.textContent = score;
+            mercuryBarEl.style.height = `${mercuryLevel}%`;
+        }
+        
+        function isColliding(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+        
+        let animationFrameId;
+
+        // Loop principal do jogo
+        function gameLoop() {
+            if (!gameRunning) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+                return;
+            }
+
+            // --- UPDATE ---
+            // Mover jogador em direção ao alvo (suavemente)
+            player.x += (player.targetX - player.x) * 0.1;
+
+            // Manter jogador dentro da tela
+            if (player.x < player.width / 2) player.x = player.width / 2;
+            if (player.x > canvas.width - player.width / 2) player.x = canvas.width - player.width / 2;
+
+            // Mover bolhas
+            bubbles.forEach(bubble => {
+                bubble.y -= bubble.speed;
+                if (bubble.y < -bubble.radius) {
+                    bubble.y = canvas.height + bubble.radius;
+                    bubble.x = Math.random() * canvas.width;
+                }
+            });
+
+            // Mover e verificar peixes bons
+            goodFish.forEach((fish, index) => {
+                fish.y += fish.speed;
+                const playerHitbox = {x: player.x - player.width/2, y: player.y - player.height/2, width: player.width, height: player.height};
+                const fishHitbox = {x: fish.x - fish.width/2, y: fish.y - fish.height/2, width: fish.width, height: fish.height};
+                if (isColliding(playerHitbox, fishHitbox)) {
+                    score += 10;
+                    goodFish.splice(index, 1);
+                    spawnGoodFish();
+                    updateHUD();
+
+                    // Verifica a pontuação para aumentar a dificuldade
+                    if (score >= 500 && !speedUpShown) {
+                        speedUpShown = true;
+                        speedMultiplier = 1.5; // Acelera a criação de novos peixes
+
+                        // Acelera os peixes que já estão na tela
+                        goodFish.forEach(f => f.speed *= 1.5);
+                        badFish.forEach(f => f.speed *= 1.5);
+
+                        // Mostra a mensagem de aceleração
+                        speedUpMessageEl.style.opacity = '1';
+                        setTimeout(() => {
+                            speedUpMessageEl.style.opacity = '0';
+                        }, 1500); // Mensagem some após 1.5 segundos
+                    }
+
+                } else if (fish.y > canvas.height + fish.height) {
+                    goodFish.splice(index, 1);
+                    spawnGoodFish();
+                }
+            });
+
+            // Mover e verificar peixes contaminados
+            badFish.forEach((fish, index) => {
+                fish.y += fish.speed;
+                const playerHitbox = {x: player.x - player.width/2, y: player.y - player.height/2, width: player.width, height: player.height};
+                const fishHitbox = {x: fish.x - fish.width/2, y: fish.y - fish.height/2, width: fish.width, height: fish.height};
+                if (isColliding(playerHitbox, fishHitbox)) {
+                    mercuryLevel += 20;
+                    badFish.splice(index, 1);
+                    spawnBadFish();
+                    updateHUD();
+                } else if (fish.y > canvas.height + fish.height) {
+                    badFish.splice(index, 1);
+                    spawnBadFish();
+                }
+            });
+
+            // Condição de Game Over por contaminação
+            if (mercuryLevel >= 100) {
+                gameOver();
+                return;
+            }
+            
+            // Mostrar pop-up didático
+            if (score >= 100 && !infoPopupShown) {
+                gameRunning = false;
+                infoPopupShown = true;
+                infoModal.classList.remove('hidden');
+                setTimeout(() => infoModal.style.opacity = '1', 10);
+            }
+            
+            // --- DRAW ---
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            bubbles.forEach(drawBubble); // Desenha as bolhas no fundo
+            goodFish.forEach(drawGoodFish);
+            badFish.forEach(drawBadFish);
+            drawPlayer(player);
+            
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function gameOver() {
+            if (!gameRunning) return; 
+            gameRunning = false;
+            
+            gameOverReasonEl.textContent = "A contaminação por mercúrio atingiu um nível fatal. Isso é o que acontece com a vida selvagem na Amazônia.";
+            finalScoreEl.textContent = score;
+            gameOverModal.classList.remove('hidden');
+            setTimeout(() => gameOverModal.style.opacity = '1', 10);
+        }
+
+        // Controles de toque e mouse
+        function movePlayer(e) {
+            if (!gameRunning) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches ? e.touches[0] : e;
+            player.targetX = touch.clientX - rect.left;
+        }
+
+        canvas.addEventListener('touchmove', movePlayer, { passive: false });
+        canvas.addEventListener('mousemove', movePlayer);
+        canvas.addEventListener('touchstart', movePlayer, { passive: false });
+        canvas.addEventListener('mousedown', movePlayer);
+
+
+        // Event Listeners dos botões
+        startButton.addEventListener('click', startGame);
+        
+        restartButton.addEventListener('click', () => {
+            gameOverModal.style.opacity = '0';
+            setTimeout(() => gameOverModal.classList.add('hidden'), 300);
+        
+(Content truncated due to size limit. Use page ranges or line ranges to read remaining content)
