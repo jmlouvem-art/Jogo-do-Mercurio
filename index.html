@@ -361,20 +361,54 @@
                 ctx.fillStyle = '#8B7355';
                 ctx.fillRect(p.x - p.width / 4, p.y - p.height / 4, p.width, p.height);
             }
-        }
+      function drawFish(f) {
+    ctx.save();
+    ctx.translate(f.x, f.y);
 
-        // Desenhar peixes
-        function drawFish(f) {
-            const img = fishImages[f.data.name];
-            if (img && img.complete && img.naturalWidth > 0) {
-                ctx.drawImage(img, f.x - f.width / 3, f.y - f.height / 3, f.width, f.height);
-            } else {
-                // Fallback: desenhar círculo
-                ctx.fillStyle = f.data.color;
-                ctx.beginPath();
-                ctx.arc(f.x, f.y, f.width / 3, 0, Math.PI * 2);
-                ctx.fill();
-            }
+    // 🎨 Halo super sutil
+    if (f.data.mercury > 15) {
+        // Peixe contaminado → vermelho fraco
+        ctx.shadowColor = 'rgba(255, 0, 0, 0.6)';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.12)';
+    } else if (f.data.mercury < 0) {
+        // Castanha → dourado suave
+        ctx.shadowColor = 'rgba(255, 215, 0, 0.6)';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
+    } else {
+        // Peixe seguro → verde suave
+        ctx.shadowColor = 'rgba(0, 255, 100, 0.6)';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = 'rgba(0, 255, 100, 0.12)';
+    }
+
+    // 🟢 Halo bem justo (quase colado no peixe)
+    ctx.beginPath();
+    ctx.arc(0, 0, f.width / 2 - 8, 0, Math.PI * 2); // 👈 círculo menor
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+
+    // 🐟 Desenha o peixe
+    const img = fishImages[f.data.name];
+    if (img && img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, -f.width / 2, -f.height / 2, f.width, f.height);
+    } else {
+        ctx.fillStyle = f.data.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, f.width / 2.5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Nome do peixe (opcional)
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 10px Nunito';
+    ctx.textAlign = 'center';
+    ctx.fillText(f.data.name, 0, -f.height / 2 - 8);
+
+    ctx.restore();
+}
         }
 
         // Resetar e iniciar o jogo
