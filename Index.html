@@ -230,7 +230,7 @@
         fishImages['Tucunaré'].src = 'Tucunaré.png';
         fishImages['Surubim'].src = 'Surubim.png';
         fishImages['Piranha'].src = 'Piranha.png';
-        fishImages["Castanha"].src = "9.png";
+        fishImages["Castanha"].src = "Castanha.png";
 
         // Dados de peixes baseados em pesquisa real
         const fishData = {
@@ -238,7 +238,7 @@
                 { name: 'Tambaqui', points: 10, mercury: 5, color: '#FFD700' },
                 { name: 'Pacu', points: 10, mercury: 5, color: '#FFA500' },
                 { name: 'Aruanã', points: 15, mercury: 8, color: '#FFFF00' },
-                { name: 'Castanha', points: 5, mercury: -10, color: '#8B4513' }
+                { name: 'Castanha', points: 20, mercury: -10, color: '#8B4513' }
             ],
             contaminated: [
                 { name: 'Tucunaré', points: -5, mercury: 25, color: '#8B0000' },
@@ -355,11 +355,11 @@
         // Desenhar jogador (Pirarucu)
         function drawPlayer(p) {
             if (playerImg.complete && playerImg.naturalWidth > 0) {
-                ctx.drawImage(playerImg, p.x - p.width / 2, p.y - p.height / 2, p.width, p.height);
+                ctx.drawImage(playerImg, p.x - p.width / 4, p.y - p.height / 4, p.width, p.height);
             } else {
                 // Fallback: desenhar retângulo
                 ctx.fillStyle = '#8B7355';
-                ctx.fillRect(p.x - p.width / 2, p.y - p.height / 2, p.width, p.height);
+                ctx.fillRect(p.x - p.width / 4, p.y - p.height / 4, p.width, p.height);
             }
         }
 
@@ -367,12 +367,12 @@
         function drawFish(f) {
             const img = fishImages[f.data.name];
             if (img && img.complete && img.naturalWidth > 0) {
-                ctx.drawImage(img, f.x - f.width / 2, f.y - f.height / 2, f.width, f.height);
+                ctx.drawImage(img, f.x - f.width / 3, f.y - f.height / 3, f.width, f.height);
             } else {
                 // Fallback: desenhar círculo
                 ctx.fillStyle = f.data.color;
                 ctx.beginPath();
-                ctx.arc(f.x, f.y, f.width / 2, 0, Math.PI * 2);
+                ctx.arc(f.x, f.y, f.width / 3, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
